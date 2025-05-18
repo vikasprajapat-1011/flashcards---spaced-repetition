@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spaced Repetition Flashcards</title>
+  <style>
+    :root {
+      --bg-color: #f0f4f8;
+      --card-color: white;
+      --text-color: black;
+      --accent-color: #4caf50;
+    }
+
+    [data-theme="dark"] {
+      --bg-color: #1e1e2f;
+      --card-color: #2d2d44;
+      --text-color: #ffffff;
+      --accent-color: #90caf9;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: var(--bg-color);
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      margin-top: 20px;
+    }
+    #flashcard {
+      background: var(--card-color);
+      width: 300px;
+      height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      margin: 20px;
+      cursor: pointer;
+      perspective: 1000px;
+    }
+    .card-inner {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transition: transform 0.6s;
+      transform-style: preserve-3d;
+    }
+    .flip .card-inner {
+      transform: rotateY(180deg);
+    }
+    .card-front,
+    .card-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      padding: 20px;
+    }
+    .card-back {
+      transform: rotateY(180deg);
+      background: var(--card-color);
+    }
+    button {
+      margin: 10px;
+      padding: 10px 20px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #stats {
+      margin-top: 20px;
+    }
+    #controls, #formContainer, #themeToggle {
+      margin-top: 20px;
+    }
+    input[type="text"] {
+      padding: 8px;
+      margin: 5px;
+      width: 200px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Flashcards - Spaced Repetition</h1>
+
+  <button id="themeToggle">Toggle Dark Mode</button>
+
+  <div id="flashcard">
+    <div class="card-inner" id="cardInner">
+      <div class="card-front" id="cardFront"></div>
+      <div class="card-back" id="cardBack"></div>
+    </div>
+  </div>
+
+  <div id="controls">
+    <button onclick="markKnow()" style="background-color: #4caf50; color: white;">Know</button>
+    <button onclick="markDontKnow()" style="background-color: #f44336; color: white;">Don't Know</button>
+  </div>
+
+  <div id="formContainer">
+    <input type="text" id="newFront" placeholder="Front text">
+    <input type="text" id="newBack" placeholder="Back text">
+    <button onclick="addFlashcard()">Add</button>
+    <button onclick="deleteCurrentFlashcard()">Delete</button>
+  </div>
+
+  <div id="stats"></div>
+
+  <script>
+    let flashcards = JSON.parse(localStorage.getItem("flashcards")) || [
+      { front: "HTML stands for?", back: "HyperText Markup Language", reviewCount: 0 },
+      { front: "CSS is used for?", back: "Styling web pages", reviewCount: 0 },
+      { front: "JavaScript can be used to?", back: "Add interactivity to websites", reviewCount: 0 },
+    ];
+
+    let currentCard = 0;
+    let knownCount = 0;
+    let seenCount = 0;
+
+    const cardFront = document.getElementById("cardFront");
+    const cardBack = document.getElementById("cardBack");
+    const cardInner = document.getElementById("cardInner");
+    const flashcard = document.getElementById("flashcard");
+    const stats = document.getElementById("stats");
+
+    function showCard(index) {
+      cardFront.innerText = flashcards[index].front;
+      cardBack.innerText = flashcards[index].back;
+    }
+
+    flashcard.addEventListener("click", () => {
+      flashcard.classList.toggle("flip");
+    });
+
+    function markKnow() {
+      knownCount++;
+      nextCard();
+    }
+
+    function markDontKnow() {
+      nextCard();
+    }
+
+    function nextCard() {
+      seenCount++;
+      flashcards[currentCard].reviewCount++;
+      currentCard = (currentCard + 1) % flashcards.length;
+      flashcard.classList.remove("flip");
+      showCard(currentCard);
+      updateStats();
+      saveFlashcards();
+    }
+
+    function updateStats() {
+      stats.innerHTML = `
+        <p><strong>Seen:</strong> ${seenCount}</p>
+        <p><strong>Known:</strong> ${knownCount}</p>
+        <p><strong>Accuracy:</strong> ${seenCount ? ((knownCount / seenCount) * 100).toFixed(1) + '%' : '0%'}</p>
+        <p><strong>Total Cards:</strong> ${flashcards.length}</p>
+      `;
+    }
+
+    function addFlashcard() {
+    
+      const front = document.getElementById("newFront").value;
+      const back = document.getElementById("newBack").value;
+      if (front && back) {
+        flashcards.push({ front, back, reviewCount: 0 });
+        saveFlashcards();
+        alert("Card added!");
+        document.getElementById("newFront").value = "";
+        document.getElementById("newBack").value = "";
+        showCard(currentCard);
+        updateStats();
+      }
+    }
+
+    function deleteCurrentFlashcard() {
+      if (flashcards.length > 1) {
+        flashcards.splice(currentCard, 1);
+        currentCard = 0;
+        saveFlashcards();
+        showCard(currentCard);
+        updateStats();
+      } else {
+        alert("At least one card is required.");
+      }
+    }
+
+    function saveFlashcards() {
+      localStorage.setItem("flashcards", JSON.stringify(flashcards));
+    }
+
+    const themeToggle = document.getElementById("themeToggle");
+    themeToggle.addEventListener("click", () => {
+      const currentTheme = document.documentElement.getAttribute("data-theme");
+      document.documentElement.setAttribute("data-theme", currentTheme === "dark" ? "light" : "dark");
+    });
+
+    showCard(currentCard);
+    updateStats();
+  </script>
+</body>
+</html>
